@@ -23,14 +23,57 @@ class LearningApp(ctk.CTk):
         # This list holds the options for your dropdown menu
         self.topics = ["Python", "Linux", "DevOps"]
 
-        # The Dropdown (OptionMenu)
-        # 'values' tells the menu to use the list we created above
+        # --- Topic Selection Row (Horizontal) ---
+        self.selection_row = ctk.CTkFrame(self.main_container, fg_color="transparent")
+        self.selection_row.pack(pady=10, fill="x")
+
+        # 1. Remove Button (Far Right)
+        self.remove_btn = ctk.CTkButton(
+            self.selection_row, text="-", width=35, 
+            fg_color="#922", hover_color="#722", 
+            command=self.remove_topic
+        )
+        self.remove_btn.pack(side="left", padx=2)
+
+       
+
+        # 2. The Dropdown (Middle - set to expand)
         self.topic_menu = ctk.CTkOptionMenu(
-            self.main_container,
+            self.selection_row,
             values=self.topics,
             width=200
         )
-        self.topic_menu.pack(pady=20)
+        self.topic_menu.pack(side="left", padx=10, expand=True, fill="x")
+
+         # 3. Add Button (Far Left)
+        self.add_btn = ctk.CTkButton(
+            self.selection_row, text="+", width=35, command=self.add_topic
+        )
+        self.add_btn.pack(side="left", padx=2)
+
+        
+    def add_topic(self):
+        # This creates a pop-up window to ask for text
+        dialog = ctk.CTkInputDialog(text="Enter new topic:", title="Add Topic")
+        new_topic = dialog.get_input()
+
+        if new_topic: # Only proceed if the user didn't hit 'Cancel'
+            self.topics.append(new_topic) # Update the 'Brain'
+            self.topic_menu.configure(values=self.topics) # Update the UI
+            print(f"Added: {new_topic}")
+
+
+    def remove_topic(self):
+        current = self.topic_menu.get()
+        if current in self.topics:
+            self.topics.remove(current)
+            # Refresh the dropdown with the new list
+            self.topic_menu.configure(values=self.topics)
+            # Reset the dropdown to the first item (if any exist)
+            if self.topics:
+                self.topic_menu.set(self.topics[0])
+            else:
+                self.topic_menu.set("No Topics")
 
 
 
