@@ -10,7 +10,8 @@ A productivity tool designed to manage focused study sessions and track learning
 - [x] Added `CTkOptionMenu` for topic selection.
 - [x] Implemented internal state list for topic management.
 - [x] Buttons for adding and removing courses
-- [x] ***NEW*** Added timer for study. Can start/pause, add custom study times for the courses and reset the timer
+- [x] Added timer for study. Can start/pause, add custom study times for the courses and reset the timer
+- [x] Added a one time extra timer
 
 ## Requirements
 - Python 3.x
