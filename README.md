@@ -12,7 +12,8 @@ A productivity tool designed to manage focused study sessions and track learning
 - [x] Buttons for adding and removing courses
 - [x] Added timer for study. Can start/pause, add custom study times for the courses and reset the timer
 - [x] Added a one time extra timer
-- [x] ***NEW*** Sends a notification when study-time is over
+- [x] Sends a notification when study-time is over
+- [x] Users can now log their summaries while studying or after the session is completed
 
 ## Requirements
 - Python 3.x

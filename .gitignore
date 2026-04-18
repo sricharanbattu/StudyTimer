@@ -3,3 +3,4 @@ __pycache__/
 config.json
 learning_history.md
 learning_lab.py
+logs/

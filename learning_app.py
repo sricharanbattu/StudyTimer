@@ -2,6 +2,7 @@ import customtkinter as ctk
 import os
 import json
 from plyer import notification
+from datetime import datetime
 
 # --- Custom Popup Dialog for Topic & Time ---
 class TopicDialog(ctk.CTkToplevel):
@@ -116,6 +117,17 @@ class LearningApp(ctk.CTk):
         self.reset_btn = ctk.CTkButton(self.controls_row, text="RESET", width=90, height=50, fg_color="transparent", border_width=2, text_color="gray", command=self.reset_timer)
         self.reset_btn.pack(side="left")
 
+        # --- Study Summary Input ---
+        ctk.CTkLabel(self.main_container, text="Study Summary (Notes):", text_color="gray").pack(pady=(10, 0))
+        self.log_entry_box = ctk.CTkTextbox(self.main_container, height=120)
+        self.log_entry_box.pack(pady=10, fill="x")
+
+        self.save_log_btn = ctk.CTkButton(
+            self.main_container, text="SAVE LOG NOW", fg_color="#34495E", 
+            command=self.log_session
+        )
+        self.save_log_btn.pack(pady=(0, 20))
+
     # --- Logic Methods ---
 
     def get_extra_seconds(self):
@@ -173,6 +185,7 @@ class LearningApp(ctk.CTk):
             self.status_label.configure(text="Time's up!", text_color="green")
             # THE TRIGGER
             self.send_completion_notification()
+            self.log_session()
 
     def reset_timer(self):
         if self.timer_id:
@@ -246,6 +259,38 @@ class LearningApp(ctk.CTk):
             )
         except Exception as e:
             print(f"Notification Error: {e}")
+
+
+    def log_session(self):
+        """Saves a personalized study summary to a topic-specific log file."""
+        summary_text = self.log_entry_box.get("1.0", "end-1c").strip()
+
+        if not summary_text:
+            return
+        
+        log_dir = "logs"
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+        
+        # Only log if there is text or if the timer actually finished
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        filename = os.path.join(log_dir, f"{self.current_topic.replace(' ', '_')}_log.txt")
+        
+        log_content = f"--- {timestamp} ---\n"
+        log_content += f"Topic: {self.current_topic}\n"
+        log_content += f"Summary: {summary_text if summary_text else 'No summary provided.'}\n"
+        log_content += "-"*30 + "\n\n"
+
+        
+        try:
+            with open(filename, "a") as f:
+                f.write(log_content)
+            # Clear the box after logging
+            self.log_entry_box.delete("1.0", "end")
+            self.status_label.configure(text=f"Log saved to {filename}", text_color="green")
+        except Exception as e:
+            self.status_label.configure(text="Error saving log!", text_color="red")
+
 
     
 
