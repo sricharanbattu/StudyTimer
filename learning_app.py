@@ -1,33 +1,91 @@
 import customtkinter as ctk
+import os
+import json
 
-# We inherit from ctk.CTk to gain all the window-making powers
+import customtkinter as ctk
+import os
+import json
+
+# --- Custom Popup Dialog for Topic & Time ---
+class TopicDialog(ctk.CTkToplevel):
+    def __init__(self, parent, title="Add Topic", initial_name="", initial_time="25"):
+        super().__init__(parent)
+        self.title(title)
+        self.geometry("300x220")
+        self.resizable(False, False)
+        
+        # Ensure it stays on top of the main window
+        self.transient(parent)
+        self.result = None
+
+        # Layout configuration
+        self.grid_columnconfigure(1, weight=1)
+        
+        ctk.CTkLabel(self, text="Topic Name:").grid(row=0, column=0, padx=20, pady=15)
+        self.name_entry = ctk.CTkEntry(self)
+        self.name_entry.insert(0, initial_name)
+        self.name_entry.grid(row=0, column=1, padx=20, pady=15)
+
+        ctk.CTkLabel(self, text="Minutes:").grid(row=1, column=0, padx=20, pady=10)
+        self.time_entry = ctk.CTkEntry(self)
+        self.time_entry.insert(0, initial_time)
+        self.time_entry.grid(row=1, column=1, padx=20, pady=10)
+
+        self.save_btn = ctk.CTkButton(self, text="Save Settings", command=self.on_save)
+        self.save_btn.grid(row=2, column=0, columnspan=2, pady=20)
+        
+        # --- Stability Fixes ---
+        self.lift()            
+        self.wait_visibility() 
+        self.grab_set()        
+
+    def on_save(self):
+        name = self.name_entry.get().strip()
+        try:
+            time = int(self.time_entry.get())
+            if name and 0 < time < 181:
+                self.result = (name, time)
+                self.destroy()
+            else:
+                self.title("Invalid Input!")
+        except ValueError:
+            self.title("Check Minutes!")
+
+# --- Main Application ---
 class LearningApp(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        # --- Window Config ---
-        self.title("Learning App")
-        self.geometry("450x700")
+        # --- Window Setup ---
+        self.title("Learning Lab")
+        self.geometry("450x600")
         ctk.set_appearance_mode("dark")
+
+        # --- Load Data ---
+        # Structure: {"Topic Name": Minutes}
+        self.topics_data = self.load_config()
+        if not self.topics_data:
+            self.topics_data = {"Python": 25}
         
-        # --- The Main Container ---
-        # This acts as a layout 'anchor' providing margins for all future content
+        self.current_topic = list(self.topics_data.keys())[0]
+        self.study_time = self.topics_data[self.current_topic]
+        
+        # --- Timer Logic State ---
+        self.timer_running = False 
+        self.time_left = self.study_time * 60
+        self.timer_id = None
+
+        # --- Main Layout ---
         self.main_container = ctk.CTkFrame(self, fg_color="transparent")
         self.main_container.pack(pady=20, padx=20, fill="both", expand=True)
 
-        # Placeholder element to verify the frame is active
-        self.status_label = ctk.CTkLabel(self.main_container, text="Frame Initialized")
-        self.status_label.pack(pady=20)
+        self.status_label = ctk.CTkLabel(self.main_container, text="Ready to Start", text_color="gray")
+        self.status_label.pack(pady=(0, 10))
 
-        # --- App State ---
-        # This list holds the options for your dropdown menu
-        self.topics = ["Python", "Linux", "DevOps"]
-
-        # --- Topic Selection Row (Horizontal) ---
+        # --- Topic Control Row ---
         self.selection_row = ctk.CTkFrame(self.main_container, fg_color="transparent")
         self.selection_row.pack(pady=10, fill="x")
 
-        # 1. Remove Button (Far Right)
         self.remove_btn = ctk.CTkButton(
             self.selection_row, text="-", width=35, 
             fg_color="#922", hover_color="#722", 
@@ -35,48 +93,146 @@ class LearningApp(ctk.CTk):
         )
         self.remove_btn.pack(side="left", padx=2)
 
-       
-
-        # 2. The Dropdown (Middle - set to expand)
         self.topic_menu = ctk.CTkOptionMenu(
             self.selection_row,
-            values=self.topics,
-            width=200
+            values=list(self.topics_data.keys()),
+            command=self.handle_topic_switch
         )
-        self.topic_menu.pack(side="left", padx=10, expand=True, fill="x")
+        self.topic_menu.pack(side="left", padx=5, expand=True, fill="x")
+        self.topic_menu.set(self.current_topic)
 
-         # 3. Add Button (Far Left)
+        self.edit_btn = ctk.CTkButton(
+            self.selection_row, text="Edit", width=45, 
+            fg_color="#555", hover_color="#444", 
+            command=self.edit_topic
+        )
+        self.edit_btn.pack(side="left", padx=2)
+
         self.add_btn = ctk.CTkButton(
             self.selection_row, text="+", width=35, command=self.add_topic
         )
         self.add_btn.pack(side="left", padx=2)
 
+        # --- Display ---
+        self.timer_label = ctk.CTkLabel(
+            self.main_container, 
+            text=f"{self.study_time:02d}:00", 
+            font=("Roboto", 80, "bold")
+        )
+        self.timer_label.pack(pady=60)
+
+        # --- Primary Controls ---
+        self.controls_row = ctk.CTkFrame(self.main_container, fg_color="transparent")
+        self.controls_row.pack(pady=10, fill="x")
+
+        self.start_btn = ctk.CTkButton(
+            self.controls_row, text="START", font=("Roboto", 16, "bold"),
+            fg_color="#28a745", hover_color="#218838", 
+            height=50, command=self.toggle_timer
+        )
+        self.start_btn.pack(side="left", padx=(0, 10), expand=True, fill="x")
+
+        self.reset_btn = ctk.CTkButton(
+            self.controls_row, text="RESET", width=90, height=50,
+            fg_color="transparent", border_width=2, text_color="gray", 
+            command=self.reset_timer
+        )
+        self.reset_btn.pack(side="left")
+
+    def handle_topic_switch(self, selected_topic):
+        if self.timer_running:
+            self.topic_menu.set(self.current_topic)
+            self.status_label.configure(text="Pause timer first!", text_color="orange")
+            return
         
+        self.current_topic = selected_topic
+        self.study_time = self.topics_data.get(selected_topic, 25)
+        self.time_left = self.study_time * 60
+        self.timer_label.configure(text=f"{self.study_time:02d}:00")
+
+    def toggle_timer(self):
+        self.timer_running = not self.timer_running
+        if self.timer_running:
+            self.start_btn.configure(text="PAUSE", fg_color="#E67E22", hover_color="#D35400")
+            self.update_timer()
+        else:
+            self.start_btn.configure(text="START", fg_color="#28a745", hover_color="#218838")
+
+    def update_timer(self):
+        if self.timer_running and self.time_left > 0:
+            self.time_left -= 1
+            mins, secs = divmod(self.time_left, 60)
+            self.timer_label.configure(text=f"{mins:02d}:{secs:02d}")
+            self.timer_id = self.after(1000, self.update_timer)
+        elif self.time_left <= 0:
+            self.timer_running = False
+            self.start_btn.configure(text="START", fg_color="#28a745")
+            self.status_label.configure(text="Time's up!", text_color="green")
+
+    def reset_timer(self):
+        if self.timer_id:
+            self.after_cancel(self.timer_id)
+        self.timer_running = False
+        self.time_left = self.study_time * 60
+        self.timer_label.configure(text=f"{self.study_time:02d}:00")
+        self.start_btn.configure(text="START", fg_color="#28a745")
+        self.status_label.configure(text="Timer Reset", text_color="gray")
+
     def add_topic(self):
-        # This creates a pop-up window to ask for text
-        dialog = ctk.CTkInputDialog(text="Enter new topic:", title="Add Topic")
-        new_topic = dialog.get_input()
+        dialog = TopicDialog(self)
+        self.wait_window(dialog)
+        if dialog.result:
+            name, time = dialog.result
+            self.topics_data[name] = time
+            self.update_ui_after_change(name)
 
-        if new_topic: # Only proceed if the user didn't hit 'Cancel'
-            self.topics.append(new_topic) # Update the 'Brain'
-            self.topic_menu.configure(values=self.topics) # Update the UI
-            print(f"Added: {new_topic}")
-
+    def edit_topic(self):
+        if self.timer_running:
+            self.status_label.configure(text="Pause before editing!", text_color="orange")
+            return
+            
+        old_name = self.topic_menu.get()
+        old_time = str(self.topics_data.get(old_name, 25))
+        
+        dialog = TopicDialog(self, title="Edit Course", initial_name=old_name, initial_time=old_time)
+        self.wait_window(dialog)
+        
+        if dialog.result:
+            new_name, new_time = dialog.result
+            if new_name != old_name:
+                del self.topics_data[old_name]
+            self.topics_data[new_name] = new_time
+            self.update_ui_after_change(new_name)
 
     def remove_topic(self):
-        current = self.topic_menu.get()
-        if current in self.topics:
-            self.topics.remove(current)
-            # Refresh the dropdown with the new list
-            self.topic_menu.configure(values=self.topics)
-            # Reset the dropdown to the first item (if any exist)
-            if self.topics:
-                self.topic_menu.set(self.topics[0])
-            else:
-                self.topic_menu.set("No Topics")
+        choice = self.topic_menu.get()
+        if choice in self.topics_data:
+            del self.topics_data[choice]
+            if not self.topics_data:
+                self.topics_data = {"Python": 25}
+            new_topic = list(self.topics_data.keys())[0]
+            self.update_ui_after_change(new_topic)
 
+    def update_ui_after_change(self, target_topic):
+        self.topic_menu.configure(values=list(self.topics_data.keys()))
+        self.topic_menu.set(target_topic)
+        self.handle_topic_switch(target_topic)
+        self.save_config()
 
+    def load_config(self):
+        if os.path.exists("config.json"):
+            try:
+                with open("config.json", "r") as f:
+                    data = json.load(f)
+                    return data if isinstance(data, dict) else {}
+            except:
+                return {}
+        return {}
+
+    def save_config(self):
+        with open("config.json", "w") as f:
+            json.dump(self.topics_data, f, indent=4)
 
 if __name__ == "__main__":
     app = LearningApp()
-    app.mainloop() # This starts the UI event loop
+    app.mainloop()
