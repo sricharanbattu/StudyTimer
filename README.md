@@ -7,8 +7,9 @@ A productivity tool designed to manage focused study sessions and track learning
 - Configured the main UI container to handle margins and layout scaling.
 - [x] Initialized OOP class structure.
 - [x] Established master container-based layout.
-- [x] **New:** Added `CTkOptionMenu` for topic selection.
-- [x] **New:** Implemented internal state list for topic management.
+- [x] Added `CTkOptionMenu` for topic selection.
+- [x] Implemented internal state list for topic management.
+- [x] ***NEW*** Buttons for adding and removing courses
 
 ## Requirements
 - Python 3.x
