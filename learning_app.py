@@ -1,6 +1,7 @@
 import customtkinter as ctk
 import os
 import json
+from plyer import notification
 
 # --- Custom Popup Dialog for Topic & Time ---
 class TopicDialog(ctk.CTkToplevel):
@@ -170,6 +171,8 @@ class LearningApp(ctk.CTk):
             self.timer_running = False
             self.start_btn.configure(text="START", fg_color="#28a745")
             self.status_label.configure(text="Time's up!", text_color="green")
+            # THE TRIGGER
+            self.send_completion_notification()
 
     def reset_timer(self):
         if self.timer_id:
@@ -231,6 +234,20 @@ class LearningApp(ctk.CTk):
     def save_config(self):
         with open("config.json", "w") as f:
             json.dump(self.topics_data, f, indent=4)
+
+    def send_completion_notification(self):
+        """Triggers a system-level popup notification."""
+        try:
+            notification.notify(
+                title="Learning Lab - Session Complete!",
+                message=f"You finished your session for {self.current_topic}.",
+                app_name="Learning Lab",
+                timeout=10
+            )
+        except Exception as e:
+            print(f"Notification Error: {e}")
+
+    
 
 if __name__ == "__main__":
     app = LearningApp()
